@@ -1,0 +1,329 @@
+# Hướng dẫn cài đặt và chạy Hệ thống Quản lý Nhân viên
+
+## Yêu cầu hệ thống
+
+- **PHP**: >= 7.4
+- **PostgreSQL**: >= 12
+- **Composer**: để quản lý dependencies
+- **Web Server**: Apache/Nginx hoặc PHP built-in server
+
+## Bước 1: Cài đặt PostgreSQL
+
+### Windows:
+1. Tải PostgreSQL từ: https://www.postgresql.org/download/windows/
+2. Cài đặt với password cho user `postgres`
+3. Mở pgAdmin để quản lý database
+
+### Ubuntu/Linux:
+```bash
+sudo apt update
+sudo apt install postgresql postgresql-contrib
+sudo -u postgres psql
+```
+
+### macOS:
+```bash
+brew install postgresql
+brew services start postgresql
+```
+
+## Bước 2: Tạo cấu trúc thư mục
+
+```
+employee_management/
+├── config/
+│   └── database.php
+├── models/
+│   ├── Employee.php
+│   ├── Department.php
+│   ├── Branch.php
+│   └── Asset.php
+├── api/
+│   └── index.php
+├── public/
+│   ├── index.html
+│   ├── css/
+│   ├── js/
+│   └── uploads/
+├── vendor/ (sẽ tự tạo khi chạy composer)
+└── composer.json
+```
+
+## Bước 3: Tạo file composer.json
+
+Tạo file `composer.json` trong thư mục gốc:
+
+```json
+{
+    "require": {
+        "phpoffice/phpspreadsheet": "^1.29"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        }
+    }
+}
+```
+
+## Bước 4: Cài đặt dependencies
+
+```bash
+cd employee_management
+composer install
+```
+
+## Bước 5: Cấu hình Database
+
+1. **Tạo database:**
+```sql
+-- Kết nối PostgreSQL
+psql -U postgres
+
+-- Tạo database
+CREATE DATABASE employee_management;
+
+-- Tạo user (tùy chọn)
+CREATE USER emp_user WITH PASSWORD 'your_password';
+GRANT ALL PRIVILEGES ON DATABASE employee_management TO emp_user;
+```
+
+2. **Chỉnh sửa config/database.php:**
+```php
+<?php
+class Database {
+    private $host = 'localhost';
+    private $db_name = 'employee_management';
+    private $username = 'postgres'; // hoặc emp_user
+    private $password = 'your_password'; // password của bạn
+    private $port = '5432';
+    // ... rest of the code
+}
+?>
+```
+
+## Bước 6: Tạo database schema
+
+Chạy script SQL để tạo tables:
+
+```bash
+# Cách 1: Sử dụng psql
+psql -U postgres -d employee_management -f database_schema.sql
+
+# Cách 2: Copy-paste vào pgAdmin
+# Mở pgAdmin → Chọn database → Query Tool → Paste SQL script → Execute
+```
+
+## Bước 7: Cấu hình Web Server
+
+### Sử dụng PHP Built-in Server (cho development):
+```bash
+cd employee_management/public
+php -S localhost:8000
+```
+
+### Sử dụng Apache:
+1. **Tạo Virtual Host:**
+
+Tạo file `/etc/apache2/sites-available/employee-management.conf`:
+```apache
+<VirtualHost *:80>
+    ServerName employee-management.local
+    DocumentRoot /path/to/employee_management/public
+    
+    <Directory /path/to/employee_management/public>
+        AllowOverride All
+        Require all granted
+        
+        # Rewrite rules cho API
+        RewriteEngine On
+        RewriteCond %{REQUEST_FILENAME} !-f
+        RewriteCond %{REQUEST_FILENAME} !-d
+        RewriteRule ^api/(.*)$ /api/index.php/$1 [QSA,L]
+    </Directory>
+    
+    ErrorLog ${APACHE_LOG_DIR}/employee_error.log
+    CustomLog ${APACHE_LOG_DIR}/employee_access.log combined
+</VirtualHost>
+```
+
+2. **Enable site:**
+```bash
+sudo a2ensite employee-management.conf
+sudo a2enmod rewrite
+sudo systemctl reload apache2
+```
+
+3. **Thêm vào /etc/hosts:**
+```
+127.0.0.1    employee-management.local
+```
+
+### Sử dụng Nginx:
+Tạo file `/etc/nginx/sites-available/employee-management`:
+```nginx
+server {
+    listen 80;
+    server_name employee-management.local;
+    root /path/to/employee_management/public;
+    index index.html index.php;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ~ ^/api/(.*)$ {
+        try_files $uri $uri/ /api/index.php/$1;
+    }
+
+    location ~ \.php$ {
+        fastcgi_pass unix:/var/run/php/php7.4-fpm.sock;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param PATH_INFO $fastcgi_path_info;
+        include fastcgi_params;
+    }
+}
+```
+
+## Bước 8: Tạo Frontend (HTML/CSS/JS)
+
+Tôi sẽ tạo giao diện web đơn giản để test hệ thống.
+
+## Bước 9: Kiểm tra kết nối
+
+1. **Test database connection:**
+Tạo file `test_connection.php`:
+```php
+<?php
+require_once 'config/database.php';
+
+$database = new Database();
+$db = $database->getConnection();
+
+if ($db) {
+    echo "Kết nối database thành công!";
+    
+    // Test query
+    $stmt = $db->query("SELECT COUNT(*) as count FROM chi_nhanh");
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    echo "\nSố chi nhánh: " . $result['count'];
+} else {
+    echo "Lỗi kết nối database!";
+}
+?>
+```
+
+2. **Test API:**
+```bash
+# Test lấy danh sách nhân viên
+curl http://localhost:8000/api/employees
+
+# Test tạo nhân viên mới
+curl -X POST http://localhost:8000/api/employees \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ho_ten": "Nguyễn Văn A",
+    "ma_nhan_vien": "NV001",
+    "email": "a@example.com"
+  }'
+```
+
+## Bước 10: Cấu hình Upload File
+
+1. **Tạo thư mục uploads:**
+```bash
+mkdir public/uploads
+chmod 755 public/uploads
+```
+
+2. **Cấu hình PHP (php.ini):**
+```ini
+upload_max_filesize = 10M
+post_max_size = 10M
+max_execution_time = 300
+```
+
+## Troubleshooting
+
+### Lỗi thường gặp:
+
+1. **"Connection refused":**
+   - Kiểm tra PostgreSQL service đang chạy
+   - Kiểm tra host/port trong config
+
+2. **"Access denied":**
+   - Kiểm tra username/password
+   - Kiểm tra quyền của user
+
+3. **"Class not found":**
+   - Chạy `composer install`
+   - Kiểm tra autoload paths
+
+4. **"Permission denied" khi upload:**
+   - `chmod 755 public/uploads`
+   - Kiểm tra owner của thư mục
+
+5. **API không hoạt động:**
+   - Kiểm tra URL rewrite rules
+   - Kiểm tra Apache/Nginx config
+
+## API Endpoints
+
+### Nhân viên:
+- `GET /api/employees` - Lấy danh sách
+- `GET /api/employees/{id}` - Lấy chi tiết
+- `POST /api/employees` - Tạo mới
+- `PUT /api/employees/{id}` - Cập nhật
+- `DELETE /api/employees/{id}` - Xóa
+
+### Phòng ban:
+- `GET /api/departments` - Lấy danh sách
+- `POST /api/departments` - Tạo mới
+- `PUT /api/departments/{id}` - Cập nhật
+- `DELETE /api/departments/{id}` - Xóa
+
+### Chi nhánh:
+- `GET /api/branches` - Lấy danh sách
+- `POST /api/branches` - Tạo mới
+- `PUT /api/branches/{id}` - Cập nhật
+- `DELETE /api/branches/{id}` - Xóa
+
+### Tài sản:
+- `GET /api/assets` - Lấy danh sách
+- `POST /api/assets` - Tạo mới
+- `PUT /api/assets/{id}` - Cập nhật
+- `DELETE /api/assets/{id}` - Xóa
+- `POST /api/allocate` - Cấp phát tài sản
+- `POST /api/recall` - Thu hồi tài sản
+
+### Import/Export:
+- `POST /api/import` - Import từ Excel
+- `GET /api/export?type=employees` - Export Excel
+
+## Demo Data
+
+Sau khi setup xong, database sẽ có sẵn dữ liệu mẫu:
+- 3 chi nhánh (Hà Nội, TP.HCM, Đà Nẵng)
+- 5 phòng ban (HR, ACC, IT, Sales, Marketing)
+
+Bạn có thể thêm nhân viên và tài sản thông qua API hoặc giao diện web.
+
+## Bảo mật
+
+1. **Validate input:** Đã implement trong models
+2. **SQL Injection:** Sử dụng PDO prepared statements
+3. **XSS:** Sử dụng htmlspecialchars()
+4. **File upload:** Validate file type và size
+5. **CORS:** Đã cấu hình trong API
+
+## Mở rộng
+
+Hệ thống có thể mở rộng thêm:
+- Authentication/Authorization
+- Role-based permissions
+- Audit logging
+- Backup/Restore
+- Notifications
+- Dashboard với charts
+- Mobile app API

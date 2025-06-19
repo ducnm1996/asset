@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng nhập - Hệ thống Quản lý Nhân viên</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .login-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            width: 100%;
+            max-width: 400px;
+            animation: fadeInUp 0.6s ease-out;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .login-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        
+        .login-header h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+        
+        .login-header p {
+            margin: 0.5rem 0 0 0;
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+        
+        .login-body {
+            padding: 2rem;
+        }
+        
+        .form-floating {
+            margin-bottom: 1rem;
+        }
+        
+        .form-control {
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+            transform: translateY(-2px);
+        }
+        
+        .btn-login {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-login:active {
+            transform: translateY(0);
+        }
+        
+        .btn-login:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .loading-spinner {
+            display: none;
+        }
+        
+        .btn-login.loading .loading-spinner {
+            display: inline-block;
+        }
+        
+        .btn-login.loading .btn-text {
+            display: none;
+        }
+        
+        .alert {
+            border-radius: 10px;
+            border: none;
+            margin-bottom: 1rem;
+        }
+        
+        .alert-danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+        }
+        
+        .alert-success {
+            background: linear-gradient(135deg, #51cf66 0%, #40c057 100%);
+            color: white;
+        }
+        
+        .remember-me {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-check-input {
+            border-radius: 4px;
+            border: 2px solid #e9ecef;
+        }
+        
+        .form-check-input:checked {
+            background-color: #667eea;
+            border-color: #667eea;
+        }
+        
+        .forgot-password {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.3s ease;
+        }
+        
+        .forgot-password:hover {
+            color: #764ba2;
+            text-decoration: underline;
+        }
+        
+        .demo-accounts {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-size: 0.8rem;
+        }
+        
+        .demo-account-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 5px;
+            transition: background-color 0.2s ease;
+        }
+        
+        .demo-account-item:hover {
+            background-color: #e9ecef;
+        }
+        
+        .demo-account-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        @media (max-width: 480px) {
+            .login-container {
+                margin: 1rem;
+                border-radius: 15px;
+            }
+            
+            .login-header, .login-body {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <div class="mb-3">
+                <i class="fas fa-building fa-2x"></i>
+            </div>
+            <h1>Đăng nhập</h1>
+            <p>Hệ thống Quản lý Nhân viên</p>
+        </div>
+        
+        <div class="login-body">
+            <div id="alert-container"></div>
+            
+            <form id="loginForm">
+                <div class="form-floating">
+                    <input type="text" class="form-control" id="username" placeholder="Username" required>
+                    <label for="username"><i class="fas fa-user me-2"></i>Tên đăng nhập</label>
+                </div>
+                
+                <div class="form-floating">
+                    <input type="password" class="form-control" id="password" placeholder="Password" required>
+                    <label for="password"><i class="fas fa-lock me-2"></i>Mật khẩu</label>
+                </div>
+                
+                <div class="remember-me">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="remember" value="remember">
+                        <label class="form-check-label" for="remember">
+                            Ghi nhớ đăng nhập
+                        </label>
+                    </div>
+                    <a href="#" class="forgot-password">Quên mật khẩu?</a>
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-login w-100">
+                    <span class="loading-spinner">
+                        <i class="fas fa-spinner fa-spin me-2"></i>
+                    </span>
+                    <span class="btn-text">
+                        <i class="fas fa-sign-in-alt me-2"></i>Đăng nhập
+                    </span>
+                </button>
+            </form>
+            
+            <div class="demo-accounts">
+                <div class="text-center mb-2">
+                    <strong><i class="fas fa-info-circle me-1"></i>Tài khoản demo:</strong>
+                </div>
+                <div class="demo-account-item" onclick="fillDemoAccount('admin', 'admin123')">
+                    <span><strong>Admin:</strong> admin</span>
+                    <span class="text-muted">admin123</span>
+                </div>
+                <div class="demo-account-item" onclick="fillDemoAccount('hr_manager', 'admin123')">
+                    <span><strong>HR Manager:</strong> hr_manager</span>
+                    <span class="text-muted">admin123</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const API_BASE = '/api';
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if already logged in
+            const token = localStorage.getItem('session_token');
+            if (token) {
+                checkTokenAndRedirect(token);
+            }
+            
+            // Form submit handler
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            
+            // Auto-fill remembered credentials
+            const rememberedUsername = localStorage.getItem('remembered_username');
+            if (rememberedUsername) {
+                document.getElementById('username').value = rememberedUsername;
+                document.getElementById('remember').checked = true;
+            }
+        });
+        
+        async function handleLogin(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const remember = document.getElementById('remember').checked;
+            
+            if (!username || !password) {
+                showAlert('Vui lòng nhập đầy đủ thông tin', 'danger');
+                return;
+            }
+            
+            setLoading(true);
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Save tokens
+                    localStorage.setItem('session_token', result.data.session_token);
+                    localStorage.setItem('refresh_token', result.data.refresh_token);
+                    localStorage.setItem('user_info', JSON.stringify(result.data.user));
+                    
+                    // Remember username if checked
+                    if (remember) {
+                        localStorage.setItem('remembered_username', username);
+                    } else {
+                        localStorage.removeItem('remembered_username');
+                    }
+                    
+                    showAlert('Đăng nhập thành công! Đang chuyển hướng...', 'success');
+                    
+                    // Redirect after short delay
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1000);
+                    
+                } else {
+                    showAlert(result.message, 'danger');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showAlert('Lỗi kết nối. Vui lòng thử lại.', 'danger');
+            } finally {
+                setLoading(false);
+            }
+        }
+        
+        async function checkTokenAndRedirect(token) {
+            try {
+                const response = await fetch(`${API_BASE}/auth/me`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    // Token still valid, redirect to main app
+                    window.location.href = '/';
+                } else {
+                    // Token invalid, clear storage
+                    localStorage.removeItem('session_token');
+                    localStorage.removeItem('refresh_token');
+                    localStorage.removeItem('user_info');
+                }
+            } catch (error) {
+                console.error('Token check error:', error);
+            }
+        }
+        
+        function setLoading(loading) {
+            const submitBtn = document.querySelector('.btn-login');
+            const form = document.getElementById('loginForm');
+            
+            if (loading) {
+                submitBtn.classList.add('loading');
+                submitBtn.disabled = true;
+                form.style.pointerEvents = 'none';
+            } else {
+                submitBtn.classList.remove('loading');
+                submitBtn.disabled = false;
+                form.style.pointerEvents = 'auto';
+            }
+        }
+        
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alert-container');
+            
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type} alert-dismissible fade show`;
+            alert.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            alertContainer.innerHTML = '';
+            alertContainer.appendChild(alert);
+            
+            // Auto dismiss after 5 seconds
+            setTimeout(() => {
+                if (alert.parentElement) {
+                    const alertInstance = new bootstrap.Alert(alert);
+                    alertInstance.close();
+                }
+            }, 5000);
+        }
+        
+        function fillDemoAccount(username, password) {
+            document.getElementById('username').value = username;
+            document.getElementById('password').value = password;
+            
+            // Add visual feedback
+            const inputs = document.querySelectorAll('.form-control');
+            inputs.forEach(input => {
+                input.style.borderColor = '#51cf66';
+                setTimeout(() => {
+                    input.style.borderColor = '';
+                }, 1000);
+            });
+        }
+        
+        // Handle forgot password
+        document.querySelector('.forgot-password').addEventListener('click', function(e) {
+            e.preventDefault();
+            showAlert('Tính năng này sẽ được phát triển trong phiên bản tiếp theo.', 'info');
+        });
+        
+        // Add enter key support for demo accounts
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                fillDemoAccount('admin', 'admin123');
+            }
+        });
+        
+        // Password visibility toggle
+        const passwordField = document.getElementById('password');
+        const passwordLabel = passwordField.nextElementSibling;
+        
+        passwordLabel.addEventListener('click', function() {
+            const icon = this.querySelector('i');
+            if (passwordField.type === 'password') {
+                passwordField.type = 'text';
+                icon.className = 'fas fa-eye me-2';
+            } else {
+                passwordField.type = 'password';
+                icon.className = 'fas fa-lock me-2';
+            }
+        });
+        
+        // Add some animation to form fields
+        document.querySelectorAll('.form-control').forEach(input => {
+            input.addEventListener('focus', function() {
+                this.parentElement.style.transform = 'translateY(-2px)';
+            });
+            
+            input.addEventListener('blur', function() {
+                this.parentElement.style.transform = 'translateY(0)';
+            });
+        });
+    </script>
+</body>
+</html>
