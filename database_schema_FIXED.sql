@@ -12,6 +12,45 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 
+-- Xóa các đối tượng cũ nếu tồn tại (để tránh lỗi duplicate)
+DROP TABLE IF EXISTS hop_dong_lao_dong CASCADE;
+DROP TABLE IF EXISTS bao_tri_tai_san CASCADE;
+DROP TABLE IF EXISTS lich_su_cap_phat CASCADE;
+DROP TABLE IF EXISTS tai_san CASCADE;
+DROP TABLE IF EXISTS nhan_vien CASCADE;
+DROP TABLE IF EXISTS phong_ban CASCADE;
+DROP TABLE IF EXISTS chi_nhanh CASCADE;
+DROP TYPE IF EXISTS tinh_trang_tai_san CASCADE;
+DROP TYPE IF EXISTS loai_tai_san_enum CASCADE;
+DROP MATERIALIZED VIEW IF EXISTS mv_dashboard_stats CASCADE;
+
+-- =====================================================
+-- ENUM VÀ TYPES CHO TÀI SẢN
+-- =====================================================
+CREATE TYPE tinh_trang_tai_san AS ENUM (
+    'Mới', 
+    'Đang dùng', 
+    'Hỏng', 
+    'Thanh lý', 
+    'Bảo trì',
+    'Chờ cấp phát',
+    'Đã thu hồi'
+);
+
+CREATE TYPE loai_tai_san_enum AS ENUM (
+    'Máy tính',
+    'Laptop', 
+    'Điện thoại',
+    'Máy in',
+    'Máy photocopy',
+    'Thiết bị mạng',
+    'Phần mềm',
+    'Xe cộ',
+    'Nội thất văn phòng',
+    'Thiết bị điện tử',
+    'Khác'
+);
+
 -- =====================================================
 -- BẢNG CHI NHÁNH (BRANCHES)
 -- =====================================================
@@ -110,33 +149,6 @@ CREATE TABLE nhan_vien (
 -- Thêm foreign key cho trưởng phòng
 ALTER TABLE phong_ban ADD CONSTRAINT fk_truong_phong 
     FOREIGN KEY (truong_phong_id) REFERENCES nhan_vien(id) ON DELETE SET NULL;
-
--- =====================================================
--- ENUM VÀ TYPES CHO TÀI SẢN
--- =====================================================
-CREATE TYPE tinh_trang_tai_san AS ENUM (
-    'Mới', 
-    'Đang dùng', 
-    'Hỏng', 
-    'Thanh lý', 
-    'Bảo trì',
-    'Chờ cấp phát',
-    'Đã thu hồi'
-);
-
-CREATE TYPE loai_tai_san_enum AS ENUM (
-    'Máy tính',
-    'Laptop', 
-    'Điện thoại',
-    'Máy in',
-    'Máy photocopy',
-    'Thiết bị mạng',
-    'Phần mềm',
-    'Xe cộ',
-    'Nội thất văn phòng',
-    'Thiết bị điện tử',
-    'Khác'
-);
 
 -- =====================================================
 -- BẢNG TÀI SẢN (ASSETS)
@@ -291,44 +303,44 @@ CREATE TABLE hop_dong_lao_dong (
 -- =====================================================
 
 -- Indexes cho bảng nhân viên
-CREATE INDEX idx_nhan_vien_ma ON nhan_vien(ma_nhan_vien);
-CREATE INDEX idx_nhan_vien_ho_ten ON nhan_vien USING gin(to_tsvector('vietnamese', ho_ten));
-CREATE INDEX idx_nhan_vien_phong_ban ON nhan_vien(phong_ban_id);
-CREATE INDEX idx_nhan_vien_chi_nhanh ON nhan_vien(chi_nhanh_id);
-CREATE INDEX idx_nhan_vien_trang_thai ON nhan_vien(trang_thai_lam_viec);
-CREATE INDEX idx_nhan_vien_ngay_vao_lam ON nhan_vien(ngay_vao_lam);
-CREATE INDEX idx_nhan_vien_email ON nhan_vien(email) WHERE email IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_nhan_vien_ma ON nhan_vien(ma_nhan_vien);
+CREATE INDEX IF NOT EXISTS idx_nhan_vien_ho_ten ON nhan_vien USING gin(to_tsvector('vietnamese', ho_ten));
+CREATE INDEX IF NOT EXISTS idx_nhan_vien_phong_ban ON nhan_vien(phong_ban_id);
+CREATE INDEX IF NOT EXISTS idx_nhan_vien_chi_nhanh ON nhan_vien(chi_nhanh_id);
+CREATE INDEX IF NOT EXISTS idx_nhan_vien_trang_thai ON nhan_vien(trang_thai_lam_viec);
+CREATE INDEX IF NOT EXISTS idx_nhan_vien_ngay_vao_lam ON nhan_vien(ngay_vao_lam);
+CREATE INDEX IF NOT EXISTS idx_nhan_vien_email ON nhan_vien(email) WHERE email IS NOT NULL;
 
 -- Indexes cho bảng tài sản
-CREATE INDEX idx_tai_san_ma ON tai_san(ma_tai_san);
-CREATE INDEX idx_tai_san_ten ON tai_san USING gin(to_tsvector('vietnamese', ten_tai_san));
-CREATE INDEX idx_tai_san_loai ON tai_san(loai_tai_san);
-CREATE INDEX idx_tai_san_tinh_trang ON tai_san(tinh_trang);
-CREATE INDEX idx_tai_san_nhan_vien ON tai_san(nhan_vien_id);
-CREATE INDEX idx_tai_san_chi_nhanh ON tai_san(vi_tri_chi_nhanh_id);
-CREATE INDEX idx_tai_san_ngay_mua ON tai_san(ngay_mua);
+CREATE INDEX IF NOT EXISTS idx_tai_san_ma ON tai_san(ma_tai_san);
+CREATE INDEX IF NOT EXISTS idx_tai_san_ten ON tai_san USING gin(to_tsvector('vietnamese', ten_tai_san));
+CREATE INDEX IF NOT EXISTS idx_tai_san_loai ON tai_san(loai_tai_san);
+CREATE INDEX IF NOT EXISTS idx_tai_san_tinh_trang ON tai_san(tinh_trang);
+CREATE INDEX IF NOT EXISTS idx_tai_san_nhan_vien ON tai_san(nhan_vien_id);
+CREATE INDEX IF NOT EXISTS idx_tai_san_chi_nhanh ON tai_san(vi_tri_chi_nhanh_id);
+CREATE INDEX IF NOT EXISTS idx_tai_san_ngay_mua ON tai_san(ngay_mua);
 
 -- Indexes cho bảng lịch sử cấp phát
-CREATE INDEX idx_lich_su_cap_phat_tai_san ON lich_su_cap_phat(tai_san_id);
-CREATE INDEX idx_lich_su_cap_phat_nhan_vien ON lich_su_cap_phat(nhan_vien_id);
-CREATE INDEX idx_lich_su_cap_phat_ngay ON lich_su_cap_phat(ngay_cap_phat);
-CREATE INDEX idx_lich_su_cap_phat_trang_thai ON lich_su_cap_phat(trang_thai);
+CREATE INDEX IF NOT EXISTS idx_lich_su_cap_phat_tai_san ON lich_su_cap_phat(tai_san_id);
+CREATE INDEX IF NOT EXISTS idx_lich_su_cap_phat_nhan_vien ON lich_su_cap_phat(nhan_vien_id);
+CREATE INDEX IF NOT EXISTS idx_lich_su_cap_phat_ngay ON lich_su_cap_phat(ngay_cap_phat);
+CREATE INDEX IF NOT EXISTS idx_lich_su_cap_phat_trang_thai ON lich_su_cap_phat(trang_thai);
 
 -- Indexes cho bảng phòng ban và chi nhánh
-CREATE INDEX idx_phong_ban_ma ON phong_ban(ma_phong);
-CREATE INDEX idx_phong_ban_ten ON phong_ban USING gin(to_tsvector('vietnamese', ten_phong));
-CREATE INDEX idx_chi_nhanh_ten ON chi_nhanh USING gin(to_tsvector('vietnamese', ten_chi_nhanh));
+CREATE INDEX IF NOT EXISTS idx_phong_ban_ma ON phong_ban(ma_phong);
+CREATE INDEX IF NOT EXISTS idx_phong_ban_ten ON phong_ban USING gin(to_tsvector('vietnamese', ten_phong));
+CREATE INDEX IF NOT EXISTS idx_chi_nhanh_ten ON chi_nhanh USING gin(to_tsvector('vietnamese', ten_chi_nhanh));
 
 -- Indexes cho bảng bảo trì
-CREATE INDEX idx_bao_tri_tai_san ON bao_tri_tai_san(tai_san_id);
-CREATE INDEX idx_bao_tri_ngay ON bao_tri_tai_san(ngay_bao_tri);
-CREATE INDEX idx_bao_tri_loai ON bao_tri_tai_san(loai_bao_tri);
+CREATE INDEX IF NOT EXISTS idx_bao_tri_tai_san ON bao_tri_tai_san(tai_san_id);
+CREATE INDEX IF NOT EXISTS idx_bao_tri_ngay ON bao_tri_tai_san(ngay_bao_tri);
+CREATE INDEX IF NOT EXISTS idx_bao_tri_loai ON bao_tri_tai_san(loai_bao_tri);
 
 -- Indexes cho bảng hợp đồng
-CREATE INDEX idx_hop_dong_nhan_vien ON hop_dong_lao_dong(nhan_vien_id);
-CREATE INDEX idx_hop_dong_so ON hop_dong_lao_dong(so_hop_dong);
-CREATE INDEX idx_hop_dong_trang_thai ON hop_dong_lao_dong(trang_thai);
-CREATE INDEX idx_hop_dong_ngay_ket_thuc ON hop_dong_lao_dong(ngay_ket_thuc) WHERE ngay_ket_thuc IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_hop_dong_nhan_vien ON hop_dong_lao_dong(nhan_vien_id);
+CREATE INDEX IF NOT EXISTS idx_hop_dong_so ON hop_dong_lao_dong(so_hop_dong);
+CREATE INDEX IF NOT EXISTS idx_hop_dong_trang_thai ON hop_dong_lao_dong(trang_thai);
+CREATE INDEX IF NOT EXISTS idx_hop_dong_ngay_ket_thuc ON hop_dong_lao_dong(ngay_ket_thuc) WHERE ngay_ket_thuc IS NOT NULL;
 
 -- =====================================================
 -- TRIGGERS TỰ ĐỘNG CẬP NHẬT
@@ -344,26 +356,32 @@ END;
 $$ language 'plpgsql';
 
 -- Triggers cho các bảng
+DROP TRIGGER IF EXISTS update_chi_nhanh_updated_at ON chi_nhanh;
 CREATE TRIGGER update_chi_nhanh_updated_at 
     BEFORE UPDATE ON chi_nhanh 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_phong_ban_updated_at ON phong_ban;
 CREATE TRIGGER update_phong_ban_updated_at 
     BEFORE UPDATE ON phong_ban 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_nhan_vien_updated_at ON nhan_vien;
 CREATE TRIGGER update_nhan_vien_updated_at 
     BEFORE UPDATE ON nhan_vien 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_tai_san_updated_at ON tai_san;
 CREATE TRIGGER update_tai_san_updated_at 
     BEFORE UPDATE ON tai_san 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_lich_su_cap_phat_updated_at ON lich_su_cap_phat;
 CREATE TRIGGER update_lich_su_cap_phat_updated_at 
     BEFORE UPDATE ON lich_su_cap_phat 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_hop_dong_updated_at ON hop_dong_lao_dong;
 CREATE TRIGGER update_hop_dong_updated_at 
     BEFORE UPDATE ON hop_dong_lao_dong 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -421,6 +439,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger cập nhật số lượng nhân viên
+DROP TRIGGER IF EXISTS trigger_cap_nhat_so_luong_nv ON nhan_vien;
 CREATE TRIGGER trigger_cap_nhat_so_luong_nv
     AFTER UPDATE OF phong_ban_id, trang_thai_lam_viec ON nhan_vien
     FOR EACH ROW
@@ -637,8 +656,9 @@ BEGIN
     END IF;
     
     -- Kiểm tra tài sản có thể cấp phát
-    SELECT tinh_trang IN ('Mới', 'Chờ cấp phát') AND nhan_vien_id IS NULL
-    FROM tai_san WHERE id = p_tai_san_id INTO v_tai_san_available;
+    SELECT (tinh_trang IN ('Mới', 'Chờ cấp phát') AND nhan_vien_id IS NULL)
+    INTO v_tai_san_available
+    FROM tai_san WHERE id = p_tai_san_id;
     
     IF NOT v_tai_san_available THEN
         RAISE EXCEPTION 'Tài sản không thể cấp phát (đã được sử dụng hoặc không ở trạng thái phù hợp)';
@@ -741,7 +761,7 @@ $ LANGUAGE plpgsql;
 -- =====================================================
 
 -- Materialized view cho dashboard
-CREATE MATERIALIZED VIEW mv_dashboard_stats AS
+CREATE MATERIALIZED VIEW IF NOT EXISTS mv_dashboard_stats AS
 SELECT 
     (SELECT COUNT(*) FROM nhan_vien WHERE trang_thai_lam_viec = 'Đang làm việc') as tong_nhan_vien,
     (SELECT COUNT(*) FROM phong_ban WHERE trang_thai = TRUE) as tong_phong_ban,
@@ -755,7 +775,7 @@ SELECT
     CURRENT_TIMESTAMP as cap_nhat_cuoi;
 
 -- Index cho materialized view
-CREATE INDEX idx_mv_dashboard_stats_cap_nhat ON mv_dashboard_stats(cap_nhat_cuoi);
+CREATE INDEX IF NOT EXISTS idx_mv_dashboard_stats_cap_nhat ON mv_dashboard_stats(cap_nhat_cuoi);
 
 -- Function refresh materialized view
 CREATE OR REPLACE FUNCTION refresh_dashboard_stats()
@@ -769,11 +789,23 @@ $ LANGUAGE plpgsql;
 -- SECURITY & PERMISSIONS
 -- =====================================================
 
--- Tạo role cho các loại user
-CREATE ROLE hr_role;
-CREATE ROLE admin_role;
-CREATE ROLE employee_role;
-CREATE ROLE readonly_role;
+-- Tạo role cho các loại user (chỉ tạo nếu chưa tồn tại)
+DO $
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'hr_role') THEN
+        CREATE ROLE hr_role;
+    END IF;
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'admin_role') THEN
+        CREATE ROLE admin_role;
+    END IF;
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'employee_role') THEN
+        CREATE ROLE employee_role;
+    END IF;
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'readonly_role') THEN
+        CREATE ROLE readonly_role;
+    END IF;
+END
+$;
 
 -- Cấp quyền cho hr_role
 GRANT SELECT, INSERT, UPDATE ON nhan_vien, phong_ban, chi_nhanh, hop_dong_lao_dong TO hr_role;
@@ -787,7 +819,7 @@ GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO admin_role;
 
 -- Cấp quyền cho employee_role
 GRANT SELECT ON nhan_vien, phong_ban, chi_nhanh TO employee_role;
-GRANT SELECT ON tai_san WHERE nhan_vien_id = current_user_id() TO employee_role;
+GRANT SELECT ON tai_san TO employee_role;
 
 -- Cấp quyền cho readonly_role
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO readonly_role;
