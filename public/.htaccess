@@ -1,15 +1,17 @@
 # public/.htaccess
 RewriteEngine On
+RewriteBase /
 
-# Handle API requests
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
+# Không rewrite nếu là file hoặc thư mục thật
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Nếu là API → chuyển về api/index.php
 RewriteRule ^api/(.*)$ api/index.php/$1 [QSA,L]
 
-# Handle frontend routing
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ index.html [QSA,L]
+# Các route frontend còn lại → giao cho index.html (SPA)
+RewriteRule ^.*$ index.html [QSA,L]
 
 # Security headers
 <IfModule mod_headers.c>
