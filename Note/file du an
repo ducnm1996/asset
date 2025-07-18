@@ -1,0 +1,1313 @@
+
+
+## 1. Docker Configuration
+
+### docker-compose.yml
+```yaml
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "8080:80"
+    volumes:
+      - ./:/var/www/html
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=db
+      - DB_NAME=asset_management
+      - DB_USER=postgres
+      - DB_PASS=password
+
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: asset_management
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  postgres_data:
+```
+
+### Dockerfile
+```dockerfile
+FROM php:8.2-apache
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    libpq-dev \
+    libzip-dev \
+    zip \
+    unzip \
+    git \
+    curl
+
+# Install PHP extensions
+RUN docker-php-ext-configure pgsql -with-pgsql=/usr/local/pgsql \
+    && docker-php-ext-install pgsql pdo_pgsql zip
+
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Enable Apache rewrite module
+RUN a2enmod rewrite
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Copy application files
+COPY . .
+
+# Install PHP dependencies
+RUN composer install
+
+# Set permissions
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 755 /var/www/html
+
+# Apache configuration
+COPY nginx.conf /etc/apache2/sites-available/000-default.conf
+
+EXPOSE 80
+```
+
+### composer.json
+```json
+{
+    "name": "company/asset-management",
+    "description": "Asset Management System",
+    "type": "project",
+    "require": {
+        "php": ">=8.0",
+        "phpoffice/phpspreadsheet": "^1.29",
+        "dompdf/dompdf": "^2.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        }
+    }
+}
+```
+
+## 2. Database Schema (init.sql)
+
+```sql
+-- Users table
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
+    role VARCHAR(20) NOT NULL DEFAULT 'employee',
+    status VARCHAR(20) NOT NULL DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Departments table
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Employees table
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    employee_code VARCHAR(20) UNIQUE NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
+    email VARCHAR(100),
+    phone VARCHAR(20),
+    department_id INTEGER REFERENCES departments(id),
+    position VARCHAR(100),
+    status VARCHAR(20) DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Asset categories table
+CREATE TABLE asset_categories (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Assets table
+CREATE TABLE assets (
+    id SERIAL PRIMARY KEY,
+    asset_code VARCHAR(50) UNIQUE NOT NULL,
+    name VARCHAR(200) NOT NULL,
+    category_id INTEGER REFERENCES asset_categories(id),
+    description TEXT,
+    purchase_date DATE,
+    purchase_price DECIMAL(15,2),
+    warranty_end_date DATE,
+    status VARCHAR(20) DEFAULT 'available',
+    location VARCHAR(200),
+    serial_number VARCHAR(100),
+    model VARCHAR(100),
+    manufacturer VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Contracts table
+CREATE TABLE contracts (
+    id SERIAL PRIMARY KEY,
+    contract_number VARCHAR(50) UNIQUE NOT NULL,
+    name VARCHAR(200) NOT NULL,
+    supplier VARCHAR(200) NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    value DECIMAL(15,2),
+    description TEXT,
+    status VARCHAR(20) DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Asset allocations table
+CREATE TABLE asset_allocations (
+    id SERIAL PRIMARY KEY,
+    asset_id INTEGER REFERENCES assets(id),
+    employee_id INTEGER REFERENCES employees(id),
+    allocated_date DATE NOT NULL,
+    returned_date DATE,
+    status VARCHAR(20) DEFAULT 'allocated',
+    notes TEXT,
+    allocated_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Maintenance records table
+CREATE TABLE maintenance_records (
+    id SERIAL PRIMARY KEY,
+    asset_id INTEGER REFERENCES assets(id),
+    type VARCHAR(50) NOT NULL, -- maintenance, repair, disposal
+    description TEXT,
+    cost DECIMAL(15,2),
+    maintenance_date DATE NOT NULL,
+    performed_by VARCHAR(200),
+    status VARCHAR(20) DEFAULT 'completed',
+    file_path VARCHAR(500),
+    created_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert sample data
+INSERT INTO users (username, email, password, full_name, role) VALUES
+('admin', 'admin@company.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Administrator', 'admin'),
+('manager', 'manager@company.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Manager', 'manager'),
+('user', 'user@company.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Employee', 'employee');
+
+INSERT INTO departments (name, description) VALUES
+('IT Department', 'Information Technology'),
+('HR Department', 'Human Resources'),
+('Finance Department', 'Finance and Accounting'),
+('Marketing Department', 'Marketing and Sales');
+
+INSERT INTO employees (employee_code, full_name, email, phone, department_id, position) VALUES
+('EMP001', 'Nguyen Van A', 'nva@company.com', '0123456789', 1, 'IT Manager'),
+('EMP002', 'Tran Thi B', 'ttb@company.com', '0987654321', 2, 'HR Specialist'),
+('EMP003', 'Le Van C', 'lvc@company.com', '0111222333', 3, 'Accountant');
+
+INSERT INTO asset_categories (name, description) VALUES
+('Computer', 'Desktop and laptop computers'),
+('Printer', 'Printing devices'),
+('Furniture', 'Office furniture'),
+('Network Equipment', 'Routers, switches, etc.');
+
+INSERT INTO assets (asset_code, name, category_id, purchase_date, purchase_price, warranty_end_date, status, location) VALUES
+('AST001', 'Dell Laptop Inspiron 15', 1, '2023-01-15', 15000000, '2025-01-15', 'allocated', 'IT Department'),
+('AST002', 'HP LaserJet Pro', 2, '2023-02-10', 5000000, '2024-02-10', 'available', 'Office Floor 1'),
+('AST003', 'Office Chair Executive', 3, '2023-03-05', 2000000, '2025-03-05', 'allocated', 'HR Department');
+```
+
+## 3. Core Classes
+
+### app/Config/Database.php
+```php
+<?php
+
+namespace App\Config;
+
+class Database
+{
+    private static $instance = null;
+    private $connection;
+
+    private function __construct()
+    {
+        $host = $_ENV['DB_HOST'] ?? 'localhost';
+        $dbname = $_ENV['DB_NAME'] ?? 'asset_management';
+        $username = $_ENV['DB_USER'] ?? 'postgres';
+        $password = $_ENV['DB_PASS'] ?? 'password';
+
+        try {
+            $this->connection = new \PDO(
+                "pgsql:host=$host;dbname=$dbname",
+                $username,
+                $password,
+                [
+                    \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+                    \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
+                ]
+            );
+        } catch (\PDOException $e) {
+            die("Database connection failed: " . $e->getMessage());
+        }
+    }
+
+    public static function getInstance()
+    {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
+    public function getConnection()
+    {
+        return $this->connection;
+    }
+}
+```
+
+### app/Core/Router.php
+```php
+<?php
+
+namespace App\Core;
+
+class Router
+{
+    private $routes = [];
+
+    public function add($route, $controller, $action, $method = 'GET')
+    {
+        $this->routes[] = [
+            'route' => $route,
+            'controller' => $controller,
+            'action' => $action,
+            'method' => $method
+        ];
+    }
+
+    public function dispatch($url, $method)
+    {
+        $url = parse_url($url, PHP_URL_PATH);
+        $url = trim($url, '/');
+
+        foreach ($this->routes as $route) {
+            $pattern = '#^' . preg_replace('/\{[^}]+\}/', '([^/]+)', $route['route']) . '$#';
+            
+            if (preg_match($pattern, $url, $matches) && $route['method'] === $method) {
+                array_shift($matches);
+                
+                $controllerName = 'App\\Controllers\\' . $route['controller'];
+                $controller = new $controllerName();
+                
+                call_user_func_array([$controller, $route['action']], $matches);
+                return;
+            }
+        }
+
+        // 404 Not Found
+        header("HTTP/1.0 404 Not Found");
+        echo "404 Not Found";
+    }
+}
+```
+
+### app/Core/Session.php
+```php
+<?php
+
+namespace App\Core;
+
+class Session
+{
+    public static function start()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+    }
+
+    public static function set($key, $value)
+    {
+        self::start();
+        $_SESSION[$key] = $value;
+    }
+
+    public static function get($key, $default = null)
+    {
+        self::start();
+        return $_SESSION[$key] ?? $default;
+    }
+
+    public static function has($key)
+    {
+        self::start();
+        return isset($_SESSION[$key]);
+    }
+
+    public static function remove($key)
+    {
+        self::start();
+        if (isset($_SESSION[$key])) {
+            unset($_SESSION[$key]);
+        }
+    }
+
+    public static function destroy()
+    {
+        self::start();
+        session_destroy();
+    }
+
+    public static function flash($key, $value = null)
+    {
+        self::start();
+        if ($value === null) {
+            $value = self::get($key);
+            self::remove($key);
+            return $value;
+        } else {
+            self::set($key, $value);
+        }
+    }
+}
+```
+
+### app/Core/Auth.php
+```php
+<?php
+
+namespace App\Core;
+
+use App\Models\User;
+
+class Auth
+{
+    public static function check()
+    {
+        return Session::has('user_id');
+    }
+
+    public static function user()
+    {
+        if (self::check()) {
+            $userId = Session::get('user_id');
+            $userModel = new User();
+            return $userModel->find($userId);
+        }
+        return null;
+    }
+
+    public static function login($username, $password)
+    {
+        $userModel = new User();
+        $user = $userModel->findByUsername($username);
+        
+        if ($user && password_verify($password, $user['password'])) {
+            Session::set('user_id', $user['id']);
+            Session::set('user_role', $user['role']);
+            return true;
+        }
+        return false;
+    }
+
+    public static function logout()
+    {
+        Session::destroy();
+    }
+
+    public static function hasRole($role)
+    {
+        $userRole = Session::get('user_role');
+        if ($role === 'admin') {
+            return $userRole === 'admin';
+        } elseif ($role === 'manager') {
+            return in_array($userRole, ['admin', 'manager']);
+        }
+        return true; // employee level
+    }
+
+    public static function requireAuth()
+    {
+        if (!self::check()) {
+            header('Location: /login');
+            exit;
+        }
+    }
+
+    public static function requireRole($role)
+    {
+        self::requireAuth();
+        if (!self::hasRole($role)) {
+            header('HTTP/1.0 403 Forbidden');
+            echo "Access Denied";
+            exit;
+        }
+    }
+}
+```
+
+## 4. Base Model & Controllers
+
+### app/Models/BaseModel.php
+```php
+<?php
+
+namespace App\Models;
+
+use App\Config\Database;
+
+abstract class BaseModel
+{
+    protected $db;
+    protected $table;
+    protected $primaryKey = 'id';
+
+    public function __construct()
+    {
+        $this->db = Database::getInstance()->getConnection();
+    }
+
+    public function findAll($orderBy = null)
+    {
+        $sql = "SELECT * FROM {$this->table}";
+        if ($orderBy) {
+            $sql .= " ORDER BY $orderBy";
+        }
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
+    public function find($id)
+    {
+        $sql = "SELECT * FROM {$this->table} WHERE {$this->primaryKey} = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$id]);
+        return $stmt->fetch();
+    }
+
+    public function create($data)
+    {
+        $fields = array_keys($data);
+        $placeholders = array_fill(0, count($fields), '?');
+        
+        $sql = "INSERT INTO {$this->table} (" . implode(', ', $fields) . ") VALUES (" . implode(', ', $placeholders) . ")";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute(array_values($data));
+    }
+
+    public function update($id, $data)
+    {
+        $fields = array_keys($data);
+        $setClause = implode(' = ?, ', $fields) . ' = ?';
+        
+        $sql = "UPDATE {$this->table} SET $setClause WHERE {$this->primaryKey} = ?";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([...array_values($data), $id]);
+    }
+
+    public function delete($id)
+    {
+        $sql = "DELETE FROM {$this->table} WHERE {$this->primaryKey} = ?";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([$id]);
+    }
+
+    public function count($where = null)
+    {
+        $sql = "SELECT COUNT(*) as count FROM {$this->table}";
+        if ($where) {
+            $sql .= " WHERE $where";
+        }
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+        $result = $stmt->fetch();
+        return $result['count'];
+    }
+}
+```
+
+### app/Controllers/BaseController.php
+```php
+<?php
+
+namespace App\Controllers;
+
+use App\Core\Session;
+
+abstract class BaseController
+{
+    protected function view($view, $data = [])
+    {
+        extract($data);
+        
+        $viewPath = __DIR__ . "/../Views/{$view}.php";
+        if (file_exists($viewPath)) {
+            include $viewPath;
+        } else {
+            die("View not found: $view");
+        }
+    }
+
+    protected function redirect($url)
+    {
+        header("Location: $url");
+        exit;
+    }
+
+    protected function json($data)
+    {
+        header('Content-Type: application/json');
+        echo json_encode($data);
+        exit;
+    }
+
+    protected function setFlash($key, $message)
+    {
+        Session::flash($key, $message);
+    }
+
+    protected function getFlash($key)
+    {
+        return Session::flash($key);
+    }
+}
+```
+
+## 5. Models
+
+### app/Models/User.php
+```php
+<?php
+
+namespace App\Models;
+
+class User extends BaseModel
+{
+    protected $table = 'users';
+
+    public function findByUsername($username)
+    {
+        $sql = "SELECT * FROM {$this->table} WHERE username = ? AND status = 'active'";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$username]);
+        return $stmt->fetch();
+    }
+
+    public function findByEmail($email)
+    {
+        $sql = "SELECT * FROM {$this->table} WHERE email = ? AND status = 'active'";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$email]);
+        return $stmt->fetch();
+    }
+
+    public function hashPassword($password)
+    {
+        return password_hash($password, PASSWORD_DEFAULT);
+    }
+}
+```
+
+### app/Models/Asset.php
+```php
+<?php
+
+namespace App\Models;
+
+class Asset extends BaseModel
+{
+    protected $table = 'assets';
+
+    public function getAssetsWithCategory($search = null, $categoryId = null, $status = null)
+    {
+        $sql = "SELECT a.*, c.name as category_name 
+                FROM assets a 
+                LEFT JOIN asset_categories c ON a.category_id = c.id 
+                WHERE 1=1";
+        
+        $params = [];
+        
+        if ($search) {
+            $sql .= " AND (a.name ILIKE ? OR a.asset_code ILIKE ?)";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+        }
+        
+        if ($categoryId) {
+            $sql .= " AND a.category_id = ?";
+            $params[] = $categoryId;
+        }
+        
+        if ($status) {
+            $sql .= " AND a.status = ?";
+            $params[] = $status;
+        }
+        
+        $sql .= " ORDER BY a.created_at DESC";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+
+    public function getAssetsByStatus()
+    {
+        $sql = "SELECT status, COUNT(*) as count FROM assets GROUP BY status";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
+    public function getAssetsExpiringWarranty($days = 30)
+    {
+        $sql = "SELECT * FROM assets 
+                WHERE warranty_end_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '$days days'
+                ORDER BY warranty_end_date ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+}
+```
+
+### app/Models/Employee.php
+```php
+<?php
+
+namespace App\Models;
+
+class Employee extends BaseModel
+{
+    protected $table = 'employees';
+
+    public function getEmployeesWithDepartment()
+    {
+        $sql = "SELECT e.*, d.name as department_name 
+                FROM employees e 
+                LEFT JOIN departments d ON e.department_id = d.id 
+                WHERE e.status = 'active'
+                ORDER BY e.full_name";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+}
+```
+
+## 6. Main Controllers
+
+### app/Controllers/AuthController.php
+```php
+<?php
+
+namespace App\Controllers;
+
+use App\Core\Auth;
+use App\Core\Session;
+
+class AuthController extends BaseController
+{
+    public function login()
+    {
+        if (Auth::check()) {
+            $this->redirect('/dashboard');
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $username = $_POST['username'] ?? '';
+            $password = $_POST['password'] ?? '';
+            
+            if (Auth::login($username, $password)) {
+                $this->redirect('/dashboard');
+            } else {
+                $this->setFlash('error', 'Invalid username or password');
+            }
+        }
+
+        $this->view('auth/login', [
+            'error' => $this->getFlash('error')
+        ]);
+    }
+
+    public function logout()
+    {
+        Auth::logout();
+        $this->redirect('/login');
+    }
+}
+```
+
+### app/Controllers/DashboardController.php
+```php
+<?php
+
+namespace App\Controllers;
+
+use App\Core\Auth;
+use App\Models\Asset;
+use App\Models\Contract;
+use App\Models\Department;
+
+class DashboardController extends BaseController
+{
+    public function index()
+    {
+        Auth::requireAuth();
+        
+        $assetModel = new Asset();
+        $contractModel = new Contract();
+        $departmentModel = new Department();
+        
+        // Statistics
+        $totalAssets = $assetModel->count();
+        $availableAssets = $assetModel->count("status = 'available'");
+        $allocatedAssets = $assetModel->count("status = 'allocated'");
+        $disposedAssets = $assetModel->count("status = 'disposed'");
+        
+        // Assets expiring warranty
+        $expiringAssets = $assetModel->getAssetsExpiringWarranty(30);
+        
+        // Contracts expiring
+        $expiringContracts = $contractModel->getContractsExpiring(30);
+        
+        // Assets by status
+        $assetsByStatus = $assetModel->getAssetsByStatus();
+        
+        $this->view('dashboard/index', [
+            'totalAssets' => $totalAssets,
+            'availableAssets' => $availableAssets,
+            'allocatedAssets' => $allocatedAssets,
+            'disposedAssets' => $disposedAssets,
+            'expiringAssets' => $expiringAssets,
+            'expiringContracts' => $expiringContracts,
+            'assetsByStatus' => $assetsByStatus
+        ]);
+    }
+}
+```
+
+### app/Controllers/AssetController.php
+```php
+<?php
+
+namespace App\Controllers;
+
+use App\Core\Auth;
+use App\Models\Asset;
+use App\Models\AssetCategory;
+use App\Helpers\ExcelExporter;
+use App\Helpers\PDFExporter;
+
+class AssetController extends BaseController
+{
+    private $assetModel;
+    private $categoryModel;
+
+    public function __construct()
+    {
+        $this->assetModel = new Asset();
+        $this->categoryModel = new AssetCategory();
+    }
+
+    public function index()
+    {
+        Auth::requireAuth();
+        
+        $search = $_GET['search'] ?? '';
+        $categoryId = $_GET['category_id'] ?? '';
+        $status = $_GET['status'] ?? '';
+        
+        $assets = $this->assetModel->getAssetsWithCategory($search, $categoryId, $status);
+        $categories = $this->categoryModel->findAll('name');
+        
+        $this->view('assets/index', [
+            'assets' => $assets,
+            'categories' => $categories,
+            'search' => $search,
+            'categoryId' => $categoryId,
+            'status' => $status
+        ]);
+    }
+
+    public function create()
+    {
+        Auth::requireRole('manager');
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $data = [
+                'asset_code' => $_POST['asset_code'],
+                'name' => $_POST['name'],
+                'category_id' => $_POST['category_id'],
+                'description' => $_POST['description'],
+                'purchase_date' => $_POST['purchase_date'],
+                'purchase_price' => $_POST['purchase_price'],
+                'warranty_end_date' => $_POST['warranty_end_date'],
+                'location' => $_POST['location'],
+                'serial_number' => $_POST['serial_number'],
+                'model' => $_POST['model'],
+                'manufacturer' => $_POST['manufacturer'],
+                'status' => 'available'
+            ];
+            
+            if ($this->assetModel->create($data)) {
+                $this->setFlash('success', 'Asset created successfully');
+                $this->redirect('/assets');
+            } else {
+                $this->setFlash('error', 'Failed to create asset');
+            }
+        }
+        
+        $categories = $this->categoryModel->findAll('name');
+        $this->view('assets/create', ['categories' => $categories]);
+    }
+
+    public function edit($id)
+    {
+        Auth::requireRole('manager');
+        
+        $asset = $this->assetModel->find($id);
+        if (!$asset) {
+            $this->setFlash('error', 'Asset not found');
+            $this->redirect('/assets');
+        }
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $data = [
+                'asset_code' => $_POST['asset_code'],
+                'name' => $_POST['name'],
+                'category_id' => $_POST['category_id'],
+                'description' => $_POST['description'],
+                'purchase_date' => $_POST['purchase_date'],
+                'purchase_price' => $_POST['purchase_price'],
+                'warranty_end_date' => $_POST['warranty_end_date'],
+                'location' => $_POST['location'],
+                'serial_number' => $_POST['serial_number'],
+                'model' => $_POST['model'],
+                'manufacturer' => $_POST['manufacturer']
+            ];
+            
+            if ($this->assetModel->update($id, $data)) {
+                $this->setFlash('success', 'Asset updated successfully');
+                $this->redirect('/assets');
+            } else {
+                $this->setFlash('error', 'Failed to update asset');
+            }
+        }
+        
+        $categories = $this->categoryModel->findAll('name');
+        $this->view('assets/edit', [
+            'asset' => $asset,
+            'categories' => $categories
+        ]);
+    }
+
+    public function delete($id)
+    {
+        Auth::requireRole('admin');
+        
+        if ($this->assetModel->delete($id)) {
+            $this->setFlash('success', 'Asset deleted successfully');
+        } else {
+            $this->setFlash('error', 'Failed to delete asset');
+        }
+        
+        $this->redirect('/assets');
+    }
+
+    public function export()
+    {
+        Auth::requireAuth();
+        
+        $format = $_GET['format'] ?? 'excel';
+        $assets = $this->assetModel->getAssetsWithCategory();
+        
+        if ($format === 'pdf') {
+            $pdfExporter = new PDFExporter();
+            $pdfExporter->exportAssets($assets);
+        } else {
+            $excelExporter = new ExcelExporter();
+            $excelExporter->exportAssets($assets);
+        }
+    }
+}
+```
+
+## 7. Views (Sample)
+
+### app/Views/layouts/header.php
+```php
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asset Management System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/dashboard">
+                <i class="fas fa-boxes"></i> Asset Management
+            </a>
+            
+            <div class="navbar-nav ms-auto">
+                <div class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-user"></i> <?= htmlspecialchars(App\Core\Auth::user()['full_name']) ?>
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="/profile">Profile</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="/logout">Logout</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <?php include __DIR__ . '/sidebar.php'; ?>
+            
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <?php if (isset($error)): ?>
+                    <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+                        <?= htmlspecialchars($error) ?>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                <?php endif; ?>
+                
+                <?php if (isset($success)): ?>
+                    <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+                        <?= htmlspecialchars($success) ?>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                <?php endif; ?>
+```
+
+### app/Views/layouts/sidebar.php
+```php
+<nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+    <div class="position-sticky pt-3">
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link" href="/dashboard">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/assets">
+                    <i class="fas fa-boxes"></i> Assets
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/categories">
+                    <i class="fas fa-tags"></i> Categories
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/employees">
+                    <i class="fas fa-users"></i> Employees
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/departments">
+                    <i class="fas fa-building"></i> Departments
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/contracts">
+                    <i class="fas fa-file-contract"></i> Contracts
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/allocations">
+                    <i class="fas fa-exchange-alt"></i> Allocations
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/maintenance">
+                    <i class="fas fa-tools"></i> Maintenance
+                </a>
+            </li>
+            <?php if (App\Core\Auth::hasRole('admin')): ?>
+            <li class="nav-item">
+                <a class="nav-link" href="/users">
+                    <i class="fas fa-user-cog"></i> Users
+                </a>
+            </li>
+            <?php endif; ?>
+        </ul>
+    </div>
+</nav>
+```
+
+### app/Views/auth/login.php
+```php
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Asset Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container">
+        <div class="row justify-content-center mt-5">
+            <div class="col-md-6 col-lg-4">
+                <div class="card shadow">
+                    <div class="card-header text-center bg-primary text-white">
+                        <h4><i class="fas fa-boxes"></i> Asset Management</h4>
+                    </div>
+                    <div class="card-body">
+                        <?php if (isset($error)): ?>
+                            <div class="alert alert-danger">
+                                <?= htmlspecialchars($error) ?>
+                            </div>
+                        <?php endif; ?>
+                        
+                        <form method="POST">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Username</label>
+                                <input type="text" class="form-control" id="username" name="username" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Login</button>
+                        </form>
+                        
+                        <div class="text-center mt-3">
+                            <small class="text-muted">
+                                Demo: admin/password, manager/password, user/password
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+```
+
+## 8. Export Helpers
+
+### app/Helpers/ExcelExporter.php
+```php
+<?php
+
+namespace App\Helpers;
+
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+
+class ExcelExporter
+{
+    public function exportAssets($assets)
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        
+        // Headers
+        $headers = ['Asset Code', 'Name', 'Category', 'Status', 'Purchase Date', 'Purchase Price', 'Location'];
+        $sheet->fromArray($headers, null, 'A1');
+        
+        // Data
+        $row = 2;
+        foreach ($assets as $asset) {
+            $data = [
+                $asset['asset_code'],
+                $asset['name'],
+                $asset['category_name'],
+                $asset['status'],
+                $asset['purchase_date'],
+                $asset['purchase_price'],
+                $asset['location']
+            ];
+            $sheet->fromArray($data, null, "A$row");
+            $row++;
+        }
+        
+        // Style headers
+        $sheet->getStyle('A1:G1')->getFont()->setBold(true);
+        
+        // Auto-size columns
+        foreach (range('A', 'G') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+        
+        // Output
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="assets_' . date('Y-m-d') . '.xlsx"');
+        header('Cache-Control: max-age=0');
+        
+        $writer = new Xlsx($spreadsheet);
+        $writer->save('php://output');
+        exit;
+    }
+}
+```
+
+### app/Helpers/PDFExporter.php
+```php
+<?php
+
+namespace App\Helpers;
+
+use Dompdf\Dompdf;
+use Dompdf\Options;
+
+class PDFExporter
+{
+    public function exportAssets($assets)
+    {
+        $options = new Options();
+        $options->set('defaultFont', 'DejaVu Sans');
+        $dompdf = new Dompdf($options);
+        
+        $html = $this->generateAssetsHTML($assets);
+        
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'landscape');
+        $dompdf->render();
+        
+        $dompdf->stream('assets_' . date('Y-m-d') . '.pdf');
+    }
+    
+    private function generateAssetsHTML($assets)
+    {
+        $html = '
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body { font-family: DejaVu Sans, sans-serif; font-size: 12px; }
+                table { width: 100%; border-collapse: collapse; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f2f2f2; font-weight: bold; }
+                .header { text-align: center; margin-bottom: 20px; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h2>Asset Management Report</h2>
+                <p>Generated on ' . date('Y-m-d H:i:s') . '</p>
+            </div>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Asset Code</th>
+                        <th>Name</th>
+                        <th>Category</th>
+                        <th>Status</th>
+                        <th>Purchase Date</th>
+                        <th>Purchase Price</th>
+                        <th>Location</th>
+                    </tr>
+                </thead>
+                <tbody>';
+        
+        foreach ($assets as $asset) {
+            $html .= '<tr>
+                <td>' . htmlspecialchars($asset['asset_code']) . '</td>
+                <td>' . htmlspecialchars($asset['name']) . '</td>
+                <td>' . htmlspecialchars($asset['category_name']) . '</td>
+                <td>' . htmlspecialchars($asset['status']) . '</td>
+                <td>' . htmlspecialchars($asset['purchase_date']) . '</td>
+                <td>' . number_format($asset['purchase_price']) . '</td>
+                <td>' . htmlspecialchars($asset['location']) . '</td>
+            </tr>';
+        }
+        
+        $html .= '</tbody></table></body></html>';
+        
+        return $html;
+    }
+}
+```
+
+## 9. Main Entry Point
+
+### public/index.php
+```php
+<?php
+
+require_once __DIR__ . '/../vendor/autoload.php';
+
+use App\Core\Router;
+use App\Core\Session;
+
+Session::start();
+
+$router = new Router();
+
+// Routes
+$router->add('', 'DashboardController', 'index');
+$router->add('dashboard', 'DashboardController', 'index');
+$router->add('login', 'AuthController', 'login');
+$router->add('logout', 'AuthController', 'logout');
+
+$router->add('assets', 'AssetController', 'index');
+$router->add('assets/create', 'AssetController', 'create');
+$router->add('assets/edit/{id}', 'AssetController', 'edit');
+$router->add('assets/delete/{id}', 'AssetController', 'delete');
+$router->add('assets/export', 'AssetController', 'export');
+
+$router->add('categories', 'AssetCategoryController', 'index');
+$router->add('employees', 'EmployeeController', 'index');
+$router->add('departments', 'DepartmentController', 'index');
+$router->add('contracts', 'ContractController', 'index');
+$router->add('allocations', 'AllocationController', 'index');
+$router->add('maintenance', 'MaintenanceController', 'index');
+$router->add('users', 'UserController', 'index');
+
+// Dispatch request
+$url = $_SERVER['REQUEST_URI'];
+$method = $_SERVER['REQUEST_METHOD'];
+
+$router->dispatch($url, $method);
+```
+
+### public/.htaccess
+```apache
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [QSA,L]
+```

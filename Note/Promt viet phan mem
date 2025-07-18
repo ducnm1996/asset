@@ -1,0 +1,91 @@
+✅ PROMPT HOÀN CHỈNH VIẾT PHẦN MỀM QUẢN LÝ TÀI SẢN (KHÔNG DÙNG LARAVEL)
+Bạn là lập trình viên PHP. Hãy viết một phần mềm quản lý tài sản cho doanh nghiệp, sử dụng PHP thuần theo mô hình MVC, database là PostgreSQL, triển khai bằng Docker. Không sử dụng Laravel hoặc framework lớn.
+
+❗ Yêu cầu đầy đủ như sau:
+
+🔹 Công nghệ bắt buộc:
+
+Ngôn ngữ: PHP (thuần) – tổ chức theo mô hình MVC chuẩn
+
+Cơ sở dữ liệu: PostgreSQL
+
+Giao diện: HTML5 + Bootstrap 5 (gọn gàng, dễ sử dụng)
+
+Tích hợp: có chức năng Export ra Excel và PDF
+
+Có trang đăng nhập (Login) với xác thực người dùng (Session-based Auth)
+
+Triển khai bằng Docker, có đầy đủ Dockerfile và docker-compose.yml
+
+🔹 Các module phần mềm:
+
+Trang đăng nhập
+
+Tài khoản người dùng, phân quyền (Admin, Nhân viên, Kỹ thuật)
+
+Sau khi đăng nhập chuyển vào Dashboard
+
+Dashboard
+
+Thống kê: tổng số tài sản, tài sản đang sử dụng, đã thanh lý
+
+Danh sách tài sản sắp hết bảo hành
+
+Hợp đồng sắp hết hạn
+
+Thống kê tài sản theo phòng ban
+
+Quản lý tài sản
+
+Thêm / sửa / xóa / tìm kiếm tài sản
+
+Export danh sách ra Excel hoặc PDF
+
+Quản lý nhóm tài sản
+
+Ví dụ: Máy tính, Máy in, Nội thất...
+
+Quản lý nhân viên
+
+Mã nhân viên, họ tên, phòng ban, email, điện thoại
+
+Quản lý phòng ban
+
+Tên phòng, mô tả, danh sách nhân viên
+
+Quản lý hợp đồng dịch vụ
+
+Tên hợp đồng, nhà cung cấp, thời hạn, gắn với tài sản cụ thể
+
+Cấp phát & thu hồi tài sản
+
+Giao diện chọn tài sản → chọn nhân viên → cấp phát
+
+Cho phép thu hồi hoặc chuyển giao
+
+Ghi log thao tác
+
+Sửa chữa, bảo trì, thanh lý tài sản
+
+Lưu lịch sử bảo trì / sửa chữa / thanh lý
+
+Có thể upload file biên bản (PDF)
+
+Quản lý người dùng & phân quyền
+
+CRUD tài khoản
+
+Gán vai trò: Admin / Nhân viên / Quản lý tài sản
+
+Giới hạn chức năng theo quyền
+
+🔹 Yêu cầu triển khai:
+
+Có hướng dẫn chạy source bằng Docker (PostgreSQL + PHP + Nginx/Apache)
+
+Hướng dẫn tạo bảng và seed dữ liệu mẫu
+
+Có cấu trúc thư mục rõ ràng: /app/Controllers, /app/Models, /app/Views, /public, /config, v.v.
+
+Hướng dẫn export dữ liệu bằng thư viện PHP (ví dụ: PHPSpreadsheet cho Excel, Dompdf cho PDF)
+
