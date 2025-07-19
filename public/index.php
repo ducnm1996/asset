@@ -1,5 +1,4 @@
 ### public/index.php
-```php
 <?php
 
 require_once __DIR__ . '/../vendor/autoload.php';
@@ -36,4 +35,3 @@ $url = $_SERVER['REQUEST_URI'];
 $method = $_SERVER['REQUEST_METHOD'];
 
 $router->dispatch($url, $method);
-```
