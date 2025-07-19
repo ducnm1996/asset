@@ -1,5 +1,3 @@
-### app/Controllers/AuthController.php
-```php
 <?php
 
 namespace App\Controllers;
@@ -23,12 +21,13 @@ class AuthController extends BaseController
             if (Auth::login($username, $password)) {
                 $this->redirect('/dashboard');
             } else {
-                $this->setFlash('error', 'Invalid username or password');
+                $error = 'Invalid username or password';
             }
         }
 
-        $this->view('auth/login', [
-            'error' => $this->getFlash('error')
+        // Show login form
+        $this->view('login', [
+            'error' => $error ?? null
         ]);
     }
 

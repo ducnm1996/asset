@@ -20,13 +20,21 @@ abstract class BaseController
 
     protected function redirect($url)
     {
-        header("Location: $url");
-        exit;
+        if (!headers_sent()) {
+            header("Location: $url");
+            exit;
+        } else {
+            echo "<script>window.location.href = '$url';</script>";
+            echo "<meta http-equiv='refresh' content='0;url=$url'>";
+            exit;
+        }
     }
 
     protected function json($data)
     {
-        header('Content-Type: application/json');
+        if (!headers_sent()) {
+            header('Content-Type: application/json');
+        }
         echo json_encode($data);
         exit;
     }

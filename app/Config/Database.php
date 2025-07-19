@@ -9,7 +9,7 @@ class Database
 
     private function __construct()
     {
-        $host = $_ENV['DB_HOST'] ?? 'localhost';
+        $host = $_ENV['DB_HOST'] ?? 'db';
         $dbname = $_ENV['DB_NAME'] ?? 'asset_management';
         $username = $_ENV['DB_USER'] ?? 'postgres';
         $password = $_ENV['DB_PASS'] ?? 'password';
@@ -42,5 +42,3 @@ class Database
         return $this->connection;
     }
 }
-
-?>

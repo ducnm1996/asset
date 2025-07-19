@@ -95,7 +95,7 @@ CREATE TABLE asset_allocations (
 CREATE TABLE maintenance_records (
     id SERIAL PRIMARY KEY,
     asset_id INTEGER REFERENCES assets(id),
-    type VARCHAR(50) NOT NULL, -- maintenance, repair, disposal
+    type VARCHAR(50) NOT NULL,
     description TEXT,
     cost DECIMAL(15,2),
     maintenance_date DATE NOT NULL,

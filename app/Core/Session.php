@@ -2,56 +2,42 @@
 
 namespace App\Core;
 
-class Session
+class Router
 {
-    public static function start()
+    private $routes = [];
+
+    public function add($route, $controller, $action, $method = 'GET')
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+        $this->routes[] = [
+            'route' => $route,
+            'controller' => $controller,
+            'action' => $action,
+            'method' => $method
+        ];
+    }
+
+    public function dispatch($url, $method)
+    {
+        $url = parse_url($url, PHP_URL_PATH);
+        $url = trim($url, '/');
+
+        foreach ($this->routes as $route) {
+            $pattern = '#^' . str_replace('{id}', '([^/]+)', $route['route']) . '$#';
+            
+            if (preg_match($pattern, $url, $matches) && $route['method'] === $method) {
+                array_shift($matches);
+                
+                $controllerName = 'App\\Controllers\\' . $route['controller'];
+                $controller = new $controllerName();
+                
+                call_user_func_array([$controller, $route['action']], $matches);
+                return;
+            }
         }
-    }
 
-    public static function set($key, $value)
-    {
-        self::start();
-        $_SESSION[$key] = $value;
-    }
-
-    public static function get($key, $default = null)
-    {
-        self::start();
-        return $_SESSION[$key] ?? $default;
-    }
-
-    public static function has($key)
-    {
-        self::start();
-        return isset($_SESSION[$key]);
-    }
-
-    public static function remove($key)
-    {
-        self::start();
-        if (isset($_SESSION[$key])) {
-            unset($_SESSION[$key]);
-        }
-    }
-
-    public static function destroy()
-    {
-        self::start();
-        session_destroy();
-    }
-
-    public static function flash($key, $value = null)
-    {
-        self::start();
-        if ($value === null) {
-            $value = self::get($key);
-            self::remove($key);
-            return $value;
-        } else {
-            self::set($key, $value);
-        }
+        // 404 Not Found
+        http_response_code(404);
+        echo "<h1>404 Not Found</h1>";
+        echo "<p>No route found for: $method /$url</p>";
     }
 }

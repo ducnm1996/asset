@@ -3,140 +3,60 @@
 namespace App\Controllers;
 
 use App\Core\Auth;
-use App\Models\Asset;
-use App\Models\AssetCategory;
-use App\Helpers\ExcelExporter;
-use App\Helpers\PDFExporter;
 
 class AssetController extends BaseController
 {
-    private $assetModel;
-    private $categoryModel;
-
-    public function __construct()
-    {
-        $this->assetModel = new Asset();
-        $this->categoryModel = new AssetCategory();
-    }
-
     public function index()
     {
         Auth::requireAuth();
         
-        $search = $_GET['search'] ?? '';
-        $categoryId = $_GET['category_id'] ?? '';
-        $status = $_GET['status'] ?? '';
+        // Mock assets data
+        $assets = [
+            ['id' => 1, 'asset_code' => 'AST001', 'name' => 'Dell Laptop Inspiron 15', 'category' => 'Computer', 'status' => 'allocated'],
+            ['id' => 2, 'asset_code' => 'AST002', 'name' => 'HP LaserJet Pro', 'category' => 'Printer', 'status' => 'available'],
+            ['id' => 3, 'asset_code' => 'AST003', 'name' => 'Office Chair Executive', 'category' => 'Furniture', 'status' => 'allocated']
+        ];
         
-        $assets = $this->assetModel->getAssetsWithCategory($search, $categoryId, $status);
-        $categories = $this->categoryModel->findAll('name');
+        echo "<!DOCTYPE html><html><head><title>Assets</title>";
+        echo "<link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css' rel='stylesheet'>";
+        echo "</head><body>";
+        echo "<div class='container mt-4'>";
+        echo "<h1>Assets Management</h1>";
+        echo "<a href='/dashboard' class='btn btn-secondary mb-3'>← Back to Dashboard</a>";
+        echo "<a href='/assets/create' class='btn btn-primary mb-3'>+ Add New Asset</a>";
         
-        $this->view('assets/index', [
-            'assets' => $assets,
-            'categories' => $categories,
-            'search' => $search,
-            'categoryId' => $categoryId,
-            'status' => $status
-        ]);
+        echo "<table class='table table-striped'>";
+        echo "<thead><tr><th>Code</th><th>Name</th><th>Category</th><th>Status</th><th>Actions</th></tr></thead>";
+        echo "<tbody>";
+        foreach ($assets as $asset) {
+            echo "<tr>";
+            echo "<td>" . $asset['asset_code'] . "</td>";
+            echo "<td>" . $asset['name'] . "</td>";
+            echo "<td>" . $asset['category'] . "</td>";
+            echo "<td><span class='badge bg-" . ($asset['status'] === 'available' ? 'success' : 'primary') . "'>" . ucfirst($asset['status']) . "</span></td>";
+            echo "<td><a href='/assets/edit/" . $asset['id'] . "' class='btn btn-sm btn-primary'>Edit</a></td>";
+            echo "</tr>";
+        }
+        echo "</tbody></table>";
+        echo "</div></body></html>";
     }
-
+    
     public function create()
-    {
-        Auth::requireRole('manager');
-        
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $data = [
-                'asset_code' => $_POST['asset_code'],
-                'name' => $_POST['name'],
-                'category_id' => $_POST['category_id'],
-                'description' => $_POST['description'],
-                'purchase_date' => $_POST['purchase_date'],
-                'purchase_price' => $_POST['purchase_price'],
-                'warranty_end_date' => $_POST['warranty_end_date'],
-                'location' => $_POST['location'],
-                'serial_number' => $_POST['serial_number'],
-                'model' => $_POST['model'],
-                'manufacturer' => $_POST['manufacturer'],
-                'status' => 'available'
-            ];
-            
-            if ($this->assetModel->create($data)) {
-                $this->setFlash('success', 'Asset created successfully');
-                $this->redirect('/assets');
-            } else {
-                $this->setFlash('error', 'Failed to create asset');
-            }
-        }
-        
-        $categories = $this->categoryModel->findAll('name');
-        $this->view('assets/create', ['categories' => $categories]);
-    }
-
-    public function edit($id)
-    {
-        Auth::requireRole('manager');
-        
-        $asset = $this->assetModel->find($id);
-        if (!$asset) {
-            $this->setFlash('error', 'Asset not found');
-            $this->redirect('/assets');
-        }
-        
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $data = [
-                'asset_code' => $_POST['asset_code'],
-                'name' => $_POST['name'],
-                'category_id' => $_POST['category_id'],
-                'description' => $_POST['description'],
-                'purchase_date' => $_POST['purchase_date'],
-                'purchase_price' => $_POST['purchase_price'],
-                'warranty_end_date' => $_POST['warranty_end_date'],
-                'location' => $_POST['location'],
-                'serial_number' => $_POST['serial_number'],
-                'model' => $_POST['model'],
-                'manufacturer' => $_POST['manufacturer']
-            ];
-            
-            if ($this->assetModel->update($id, $data)) {
-                $this->setFlash('success', 'Asset updated successfully');
-                $this->redirect('/assets');
-            } else {
-                $this->setFlash('error', 'Failed to update asset');
-            }
-        }
-        
-        $categories = $this->categoryModel->findAll('name');
-        $this->view('assets/edit', [
-            'asset' => $asset,
-            'categories' => $categories
-        ]);
-    }
-
-    public function delete($id)
-    {
-        Auth::requireRole('admin');
-        
-        if ($this->assetModel->delete($id)) {
-            $this->setFlash('success', 'Asset deleted successfully');
-        } else {
-            $this->setFlash('error', 'Failed to delete asset');
-        }
-        
-        $this->redirect('/assets');
-    }
-
-    public function export()
     {
         Auth::requireAuth();
         
-        $format = $_GET['format'] ?? 'excel';
-        $assets = $this->assetModel->getAssetsWithCategory();
-        
-        if ($format === 'pdf') {
-            $pdfExporter = new PDFExporter();
-            $pdfExporter->exportAssets($assets);
-        } else {
-            $excelExporter = new ExcelExporter();
-            $excelExporter->exportAssets($assets);
-        }
+        echo "<!DOCTYPE html><html><head><title>Add Asset</title>";
+        echo "<link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css' rel='stylesheet'>";
+        echo "</head><body>";
+        echo "<div class='container mt-4'>";
+        echo "<h1>Add New Asset</h1>";
+        echo "<a href='/assets' class='btn btn-secondary mb-3'>← Back to Assets</a>";
+        echo "<form method='post'>";
+        echo "<div class='mb-3'><label class='form-label'>Asset Code</label><input type='text' class='form-control' name='asset_code' required></div>";
+        echo "<div class='mb-3'><label class='form-label'>Name</label><input type='text' class='form-control' name='name' required></div>";
+        echo "<div class='mb-3'><label class='form-label'>Category</label><select class='form-control' name='category'><option>Computer</option><option>Printer</option><option>Furniture</option></select></div>";
+        echo "<button type='submit' class='btn btn-primary'>Save Asset</button>";
+        echo "</form>";
+        echo "</div></body></html>";
     }
 }
