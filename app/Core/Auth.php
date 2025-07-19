@@ -1,5 +1,3 @@
-### app/Core/Auth.php
-```php
 <?php
 
 namespace App\Core;

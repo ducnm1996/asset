@@ -1,5 +1,3 @@
-### app/Controllers/BaseController.php
-```php
 <?php
 
 namespace App\Controllers;
@@ -43,4 +41,3 @@ abstract class BaseController
         return Session::flash($key);
     }
 }
-```

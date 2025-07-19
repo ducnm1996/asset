@@ -1,5 +1,3 @@
-### app/Models/BaseModel.php
-```php
 <?php
 
 namespace App\Models;
@@ -77,4 +75,3 @@ abstract class BaseModel
         return $result['count'];
     }
 }
-```

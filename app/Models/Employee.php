@@ -1,5 +1,3 @@
-### app/Models/Employee.php
-```php
 <?php
 
 namespace App\Models;
@@ -21,4 +19,3 @@ class Employee extends BaseModel
         return $stmt->fetchAll();
     }
 }
-```

@@ -1,5 +1,3 @@
-### app/Controllers/AssetController.php
-```php
 <?php
 
 namespace App\Controllers;
@@ -142,4 +140,3 @@ class AssetController extends BaseController
         }
     }
 }
-```

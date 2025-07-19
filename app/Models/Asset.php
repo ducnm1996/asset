@@ -1,5 +1,3 @@
-### app/Models/Asset.php
-```php
 <?php
 
 namespace App\Models;
@@ -58,4 +56,3 @@ class Asset extends BaseModel
         return $stmt->fetchAll();
     }
 }
-```

@@ -1,5 +1,3 @@
-### app/Core/Router.php
-```php
 <?php
 
 namespace App\Core;

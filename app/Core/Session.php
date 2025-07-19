@@ -1,5 +1,3 @@
-### app/Core/Session.php
-```php
 <?php
 
 namespace App\Core;

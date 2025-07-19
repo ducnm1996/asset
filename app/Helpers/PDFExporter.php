@@ -1,5 +1,3 @@
-### app/Helpers/PDFExporter.php
-```php
 <?php
 
 namespace App\Helpers;
@@ -76,4 +74,3 @@ class PDFExporter
         return $html;
     }
 }
-```

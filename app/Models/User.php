@@ -1,5 +1,3 @@
-### app/Models/User.php
-```php
 <?php
 
 namespace App\Models;
@@ -29,4 +27,3 @@ class User extends BaseModel
         return password_hash($password, PASSWORD_DEFAULT);
     }
 }
-```

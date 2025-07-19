@@ -1,5 +1,3 @@
-### app/Helpers/ExcelExporter.php
-```php
 <?php
 
 namespace App\Helpers;
@@ -52,4 +50,3 @@ class ExcelExporter
         exit;
     }
 }
-```
