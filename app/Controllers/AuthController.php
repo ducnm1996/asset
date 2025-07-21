@@ -48,4 +48,3 @@ class AuthController extends BaseController
         $this->redirect("/login");
     }
 }
-EOF

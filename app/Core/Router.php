@@ -42,4 +42,3 @@ class Router
         echo "<p><a href=\"/dashboard\">Go to Dashboard</a></p>";
     }
 }
-EOF
