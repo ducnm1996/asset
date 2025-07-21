@@ -6,25 +6,24 @@ class Auth
 {
     public static function check()
     {
-        return Session::has('user_id');
+        return Session::has("user_id");
     }
 
     public static function login($username, $password)
     {
-        // Demo authentication - trong thực tế sẽ check database
-        if ($username === 'admin' && $password === 'password') {
-            Session::set('user_id', 1);
-            Session::set('user_role', 'admin');
+        if ($username === "admin" && $password === "password") {
+            Session::set("user_id", 1);
+            Session::set("user_role", "admin");
             return true;
         }
-        if ($username === 'manager' && $password === 'password') {
-            Session::set('user_id', 2);
-            Session::set('user_role', 'manager');
+        if ($username === "manager" && $password === "password") {
+            Session::set("user_id", 2);
+            Session::set("user_role", "manager");
             return true;
         }
-        if ($username === 'user' && $password === 'password') {
-            Session::set('user_id', 3);
-            Session::set('user_role', 'employee');
+        if ($username === "user" && $password === "password") {
+            Session::set("user_id", 3);
+            Session::set("user_role", "employee");
             return true;
         }
         return false;
@@ -39,30 +38,20 @@ class Auth
     {
         if (self::check()) {
             return [
-                'id' => Session::get('user_id'),
-                'username' => Session::get('user_role'),
-                'role' => Session::get('user_role')
+                "id" => Session::get("user_id"),
+                "username" => Session::get("user_role"),
+                "role" => Session::get("user_role")
             ];
         }
         return null;
     }
 
-    public static function hasRole($role)
-    {
-        $userRole = Session::get('user_role');
-        if ($role === 'admin') {
-            return $userRole === 'admin';
-        } elseif ($role === 'manager') {
-            return in_array($userRole, ['admin', 'manager']);
-        }
-        return true;
-    }
-
     public static function requireAuth()
     {
         if (!self::check()) {
-            header('Location: /login');
+            header("Location: /login");
             exit;
         }
     }
 }
+EOF'

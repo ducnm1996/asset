@@ -24,28 +24,9 @@ abstract class BaseController
             header("Location: $url");
             exit;
         } else {
-            echo "<script>window.location.href = '$url';</script>";
-            echo "<meta http-equiv='refresh' content='0;url=$url'>";
+            echo "<script>window.location.href = \"$url\";</script>";
             exit;
         }
     }
-
-    protected function json($data)
-    {
-        if (!headers_sent()) {
-            header('Content-Type: application/json');
-        }
-        echo json_encode($data);
-        exit;
-    }
-
-    protected function setFlash($key, $message)
-    {
-        Session::flash($key, $message);
-    }
-
-    protected function getFlash($key)
-    {
-        return Session::flash($key);
-    }
 }
+EOF'

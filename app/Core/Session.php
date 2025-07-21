@@ -2,42 +2,57 @@
 
 namespace App\Core;
 
-class Router
+class Session
 {
-    private $routes = [];
-
-    public function add($route, $controller, $action, $method = 'GET')
+    public static function start()
     {
-        $this->routes[] = [
-            'route' => $route,
-            'controller' => $controller,
-            'action' => $action,
-            'method' => $method
-        ];
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
     }
 
-    public function dispatch($url, $method)
+    public static function set($key, $value)
     {
-        $url = parse_url($url, PHP_URL_PATH);
-        $url = trim($url, '/');
+        self::start();
+        $_SESSION[$key] = $value;
+    }
 
-        foreach ($this->routes as $route) {
-            $pattern = '#^' . str_replace('{id}', '([^/]+)', $route['route']) . '$#';
-            
-            if (preg_match($pattern, $url, $matches) && $route['method'] === $method) {
-                array_shift($matches);
-                
-                $controllerName = 'App\\Controllers\\' . $route['controller'];
-                $controller = new $controllerName();
-                
-                call_user_func_array([$controller, $route['action']], $matches);
-                return;
-            }
+    public static function get($key, $default = null)
+    {
+        self::start();
+        return $_SESSION[$key] ?? $default;
+    }
+
+    public static function has($key)
+    {
+        self::start();
+        return isset($_SESSION[$key]);
+    }
+
+    public static function remove($key)
+    {
+        self::start();
+        if (isset($_SESSION[$key])) {
+            unset($_SESSION[$key]);
         }
+    }
 
-        // 404 Not Found
-        http_response_code(404);
-        echo "<h1>404 Not Found</h1>";
-        echo "<p>No route found for: $method /$url</p>";
+    public static function destroy()
+    {
+        self::start();
+        session_destroy();
+    }
+
+    public static function flash($key, $value = null)
+    {
+        self::start();
+        if ($value === null) {
+            $value = self::get($key);
+            self::remove($key);
+            return $value;
+        } else {
+            self::set($key, $value);
+        }
     }
 }
+EOF'
