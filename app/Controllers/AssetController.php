@@ -28,4 +28,4 @@ class AssetController extends BaseController
         echo "</div></body></html>";
     }
 }
-EOF'
+EOF

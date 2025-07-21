@@ -29,4 +29,4 @@ abstract class BaseController
         }
     }
 }
-EOF'
+EOF

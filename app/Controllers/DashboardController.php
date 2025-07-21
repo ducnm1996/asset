@@ -80,4 +80,4 @@ class DashboardController extends BaseController
         echo "</body></html>";
     }
 }
-EOF'
+EOF

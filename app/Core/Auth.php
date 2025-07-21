@@ -54,4 +54,4 @@ class Auth
         }
     }
 }
-EOF'
+EOF
